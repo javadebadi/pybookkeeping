@@ -75,6 +75,8 @@ class Transaction:
         ) -> None:
         self.title = title
         self.utc_datetime = utc_datetime
+        self._analyzed = False
+        self.journal_entries = []
 
     @property
     def utc_datetime(self) -> dt:
@@ -96,11 +98,52 @@ class Transaction:
             )
         self._utc_datetime = utc_datetime.replace(tzinfo=pytz.utc)
 
+    @property
+    def analyzed(self) -> bool:
+        return self._analyzed
+
+    def validate_journal_entries(
+        self,
+        journal_entries,
+        ):
+        debit_sum = 0
+        credit_sum = 0
+        assert type(journal_entries) == list
+        assert len(journal_entries) > 0
+        for account, debit, credit in journal_entries:
+            assert isinstance(account, Account)
+            debit_sum += debit
+            credit_sum += credit
+        if debit_sum != credit_sum:
+            raise ValueError(
+                "debit adn credit does not match for the journal entry"
+            )
+
+    def add_journal_entries(
+        self,
+        journal_entries,
+        ):
+        self.validate_journal_entries(journal_entries)
+        self.journal_entries = journal_entries
+        self._analyzed = True
+
+    def __lt__(self, other):
+        if not isinstance(other, type(self)):
+            raise NotImplementedError(
+                "not same types are not implemented"
+                )
+        if self.utc_datetime < other.utc_datetime:
+            return True
+        else:
+            return False
 
 
     def __str__(self) -> str:
         s = "======== Transaction ===========\n"
         s += self.title + "\n"
+        if self._analyzed:
+            for account, debit, credit in self.journal_entries:
+                s += str(account).strip().ljust(50) + "|" + str(debit).ljust(12) + "|"  + str(credit).ljust(12) + "\n" 
         return s
 
     def __repr__(self) -> str:
