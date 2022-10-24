@@ -110,7 +110,7 @@ class Transaction:
         credit_sum = 0
         assert type(journal_entries) == list
         assert len(journal_entries) > 0
-        for account, debit, credit in journal_entries:
+        for details, account, debit, credit in journal_entries:
             assert isinstance(account, Account)
             debit_sum += debit
             credit_sum += credit
@@ -137,13 +137,15 @@ class Transaction:
         else:
             return False
 
-
     def __str__(self) -> str:
         s = "======== Transaction ===========\n"
         s += self.title + "\n"
         if self._analyzed:
-            for account, debit, credit in self.journal_entries:
-                s += str(account).strip().ljust(50) + "|" + str(debit).ljust(12) + "|"  + str(credit).ljust(12) + "\n" 
+            for details, account, debit, credit in self.journal_entries:
+                if details is None:
+                    s += str(account).strip().ljust(50) + "|" + str(debit).ljust(12) + "|"  + str(credit).ljust(12) + "\n" 
+                else:
+                    s += (str(account.account_number).ljust(10).strip() + "| " + str(details).strip() ).ljust(50) + "|" + str(debit).ljust(12) + "|"  + str(credit).ljust(12) + "\n" 
         return s
 
     def __repr__(self) -> str:
@@ -152,4 +154,50 @@ class Transaction:
         s += "\tutcdatetime="
         s += repr(self.utc_datetime).replace(', tzinfo=<UTC>)','),') + "\n"
         s += ")"
+        return s
+
+
+class Journal:
+
+    def __init__(self) -> None:
+        self._transactions = []
+        self._start_date = None
+        self._last_date = None
+
+    @property
+    def transactions(self):
+        return self._transactions
+
+    @property
+    def start_date(self):
+        return self._start_date
+
+    @property
+    def last_date(self):
+        return self._last_date
+
+    def add_transaction(self, transaction: Transaction):
+        assert isinstance(transaction, Transaction)
+        assert transaction.analyzed is True
+        self._transactions.append(transaction)
+        if not self._start_date:
+            self._start_date = transaction.utc_datetime
+        else:
+            self._start_date = min(
+                self.start_date,
+                transaction.utc_datetime,
+            )
+        if not self._last_date:
+            self._last_date = transaction.utc_datetime
+        else:
+            self._last_date = max(
+                self.last_date,
+                transaction.utc_datetime,
+            )
+        self._transactions = sorted(self._transactions)
+
+    def __str__(self) -> str:
+        s = "="*25 + " Genral Journal " + "="*25 + "\n"
+        for transaction in self.transactions:
+            s += str(transaction) + "\n"
         return s
